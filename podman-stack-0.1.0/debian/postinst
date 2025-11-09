@@ -1,0 +1,74 @@
+#!/bin/sh
+set -e
+
+# Determine latest installed /opt/podman-<version>
+PREFIX=""
+if ls -1d /opt/podman-v* >/dev/null 2>&1; then
+  PREFIX="$(ls -1d /opt/podman-v* | sort -V | tail -n1)"
+fi
+
+# Create /opt/podman symlink
+if [ -n "$PREFIX" ]; then
+  ln -sfn "$PREFIX" /opt/podman
+fi
+
+# Containers config
+mkdir -p /etc/containers
+if [ ! -f /etc/containers/containers.conf ]; then
+  cat > /etc/containers/containers.conf <<'EOF'
+[engine]
+runtime = "/opt/podman/bin/crun"
+helper_binaries_dir = ["/opt/podman/libexec/podman", "/opt/podman/bin"]
+network_backend = "netavark"
+cgroup_manager = "systemd"
+EOF
+fi
+if [ ! -f /etc/containers/registries.conf ]; then
+  cat > /etc/containers/registries.conf <<'EOF'
+unqualified-search-registries = ["docker.io"]
+[registries.search]
+registries=["docker.io","quay.io","registry.fedoraproject.org"]
+[registries.block]
+registries=[]
+EOF
+fi
+
+# ops user and rootless setup
+if ! getent group ops >/dev/null 2>&1; then
+  addgroup --system ops || addgroup ops || true
+fi
+if ! id -u ops >/dev/null 2>&1; then
+  adduser --disabled-password --gecos "" --ingroup ops ops || true
+fi
+grep -q '^ops:' /etc/subuid || echo 'ops:100000:65536' >> /etc/subuid
+grep -q '^ops:' /etc/subgid || echo 'ops:100000:65536' >> /etc/subgid
+loginctl enable-linger ops || true
+install -d -m 0755 /etc/containers/systemd
+install -d -m 0755 /home/ops/.config/containers/systemd || true
+chown -R ops:ops /home/ops/.config/containers || true
+
+# Systemd (system) units symlinks if present in PREFIX
+if [ -n "$PREFIX" ] && [ -d "$PREFIX/lib/systemd/system" ]; then
+  ln -sfn "$PREFIX/lib/systemd/system/podman.socket" /etc/systemd/system/podman.socket || true
+  ln -sfn "$PREFIX/lib/systemd/system/podman.service" /etc/systemd/system/podman.service || true
+  systemctl daemon-reload || true
+fi
+
+# Capabilities on passt/pasta if present
+for bin in /opt/podman/bin/passt /opt/podman/bin/pasta; do
+  if [ -x "$bin" ]; then
+    setcap cap_net_admin,cap_net_raw,cap_net_bind_service+ep "$bin" || true
+  fi
+done
+
+# Convenience symlinks
+for b in podman podman-remote quadlet crun conmon netavark aardvark-dns passt pasta; do
+  if [ -x "/opt/podman/bin/$b" ] && [ ! -e "/usr/local/bin/$b" ]; then
+    ln -s "/opt/podman/bin/$b" "/usr/local/bin/$b" || true
+  fi
+done
+
+# Activate ldconfig
+ldconfig || true
+
+exit 0

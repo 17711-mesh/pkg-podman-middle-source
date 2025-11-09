@@ -1,0 +1,43 @@
+Source: podman-stack
+Section: admin
+Priority: optional
+Maintainer: Local Builder <root@localhost>
+Standards-Version: 4.6.2
+Build-Depends:
+ debhelper-compat (= 13),
+ build-essential,
+ pkg-config,
+ git,
+ curl,
+ jq,
+ golang-any,
+ rustc,
+ cargo,
+ protobuf-compiler,
+ autoconf,
+ automake,
+ libtool,
+ meson,
+ ninja-build,
+ python3,
+ python3-pip,
+ libassuan-dev,
+ libgpgme-dev,
+ libseccomp-dev,
+ libsystemd-dev,
+ libbtrfs-dev,
+ btrfs-progs,
+ libdevmapper-dev,
+ libapparmor-dev,
+ libcap-dev,
+ libyajl-dev
+
+Rules-Requires-Root: no
+
+Package: podman-stack
+Architecture: any
+Depends: ${misc:Depends}, ${shlibs:Depends},
+ adduser, systemd, policykit-1, dbus-user-session, uidmap, iptables, slirp4netns, fuse-overlayfs
+Description: Full Podman stack builder and runtime under /opt/podman-${PODMAN_VERSION}
+ Builds the Podman ecosystem from upstream sources and installs under /opt.
+ Provides post-install configuration (ops user, subuids, linger, symlinks, PATH, ldconfig).

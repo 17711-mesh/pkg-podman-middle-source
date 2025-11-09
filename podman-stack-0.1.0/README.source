@@ -1,0 +1,10 @@
+This is a convenience "native" source package that orchestrates building the
+Podman stack from upstream Git repositories during the package build.
+Network access is therefore required while building.
+
+To build:
+  sudo apt build-dep ./
+  PODMAN_VERSION=v5.7.0 dpkg-buildpackage -us -uc -b
+
+Resulting binary package installs files into /opt/podman-${PODMAN_VERSION}
+and configures system integration in maintainer scripts.

@@ -1,0 +1,8 @@
+#!/bin/sh
+set -e
+if [ "$1" = "purge" ]; then
+  rm -f /etc/profile.d/zz-podman.sh
+  rm -f /etc/ld.so.conf.d/podman.conf
+  ldconfig || true
+fi
+exit 0

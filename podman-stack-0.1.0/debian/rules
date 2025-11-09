@@ -1,0 +1,21 @@
+#!/usr/bin/make -f
+export DEB_BUILD_MAINT_OPTIONS = hardening=+all
+export DH_VERBOSE = 1
+
+# Allow override of PODMAN_VERSION at build time: e.g. debuild -ePODMAN_VERSION=v5.7.0
+export PODMAN_VERSION ?=
+
+%:
+	dh $@
+
+override_dh_auto_build:
+	DESTDIR=$(CURDIR)/debian/tmp \	DEB_HOST_ARCH=$(DEB_HOST_ARCH) \	PODMAN_VERSION="$(PODMAN_VERSION)" \	bash ./scripts/build-all.sh
+
+override_dh_auto_install:
+	# Stage files from debian/tmp into package dir
+	mkdir -p $(CURDIR)/debian/podman-stack
+	rsync -a $(CURDIR)/debian/tmp/ $(CURDIR)/debian/podman-stack/
+
+override_dh_usrlocal:
+	# We intentionally ship files into /opt and /etc; allow this.
+	:
